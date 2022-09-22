@@ -1,12 +1,13 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import cors from "cors";
+import formatObject from './Components/dataProc.js'
+import getData from './Components/dataFetch.js'
 
 const app= express();
-const url = `http://127.0.0.1:7003/documents`;
+
 app.use(cors({origin: '*'}));
 
-
+//You can try here any values you want, it works for every field 
 const old = {
     "name": "Scibids",
     "number_of_employees": 14,
@@ -20,68 +21,15 @@ const New = {
     "tags": ["fun", "huhu"]
     };
     
-function tagProcess(a1, a2) {
-        var result = [];
-        let intersection = a1.filter(x => a2.includes(x));
-        result.push(intersection)
-        let diffL = a2.filter(x => !a1.includes(x));
-        result.push(diffL.map(x=> x.strike()))
-        let diffR = a1.filter(x => !a2.includes(x));
-        result.push(diffR.map(x=> x.bold()))
-        var merged = [].concat.apply([], result);
-        console.log(merged)
-        return merged;
-      }
-
-function formatObject(oldest, latest){
-
-    if(latest.is_serious){
-        latest.is_serious = "yes"
-    }
-    else{
-        latest.is_serious = "no"
-    }
-    if(oldest.is_serious){
-        oldest.is_serious = "yes"
-    }
-    else{
-        oldest.is_serious = "no"
-    }
-
-    if(latest.name != oldest.name ){
-        latest.name = latest.name.bold() +','+oldest.name.strike()
-    }
-    if(latest.number_of_employees != oldest.number_of_employees){
-        latest.number_of_employees = (latest.number_of_employees.toString()) +','+ (oldest.number_of_employees.toString()).strike()
-    }
-    if(latest.is_serious != oldest.is_serious){
-        latest.is_serious.bold() +','+oldest.is_serious.strike()
-    }
-    latest.tags = tagProcess(latest.tags, oldest.tags)
-    
-    return JSON.stringify(latest);
-}
 
 const funcRes = formatObject(old, New);
 
-async function getData(){
-    try {
-        const response = await fetch(url);
-        const json = await response.json();
-        return json.data
-      } catch (error) {
-        console.log(error);
-        return error
-      }
-}
-
+//getting the data from the python API
 const data = await getData()
-
 
 // Endpoint 1 getting document by ID
 app.get('/documents/:id', (req,res,next)=>{
     const id = parseInt(req.params.id, 10);
-    try {
         data.map((docs) => {
             if (docs.id === id) {
             return res.status(200).send({
@@ -89,13 +37,15 @@ app.get('/documents/:id', (req,res,next)=>{
                 message: 'Found it !',
                 data :docs,
             });
-            } 
+            }
         });
-    } catch (error) {
-        return res.status(404).json();
-    }
+        return res.status(404).send({
+            success: "Nope",
+            message:"ID is nowhere to be found"
+        });
 });
 // Endpoint 2 getting document tags
+//tags don't exist in the database, this url would search for a document by ID and display its tags
 app.get('/tags/:id', (req,res, next)=>{
     const id = parseInt(req.params.id, 10);
     data.map((docs) => {
@@ -111,7 +61,8 @@ app.get('/tags/:id', (req,res, next)=>{
     });
  
 console.log(formatObject(old,New))
-// launching the runtime server
+
+
 
 app.get('/function', (req,res,next)=>{
     try {
@@ -124,6 +75,8 @@ app.get('/function', (req,res,next)=>{
         return error
     }
 })
+
+// launching the runtime server and stuff
 
 const PORT = 5000;
 
