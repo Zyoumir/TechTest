@@ -1,14 +1,11 @@
 import express from 'express';
 import fetch from 'node-fetch';
+import cors from "cors";
 
 const app= express();
 const url = `http://127.0.0.1:7003/documents`;
-const options = {
-	method: 'GET',
-	headers: {
-		"Content-Type": "application/json"
-	}
-};
+app.use(cors({origin: '*'}));
+
 
 const old = {
     "name": "Scibids",
@@ -37,6 +34,7 @@ function tagProcess(a1, a2) {
       }
 
 function formatObject(oldest, latest){
+
     if(latest.is_serious){
         latest.is_serious = "yes"
     }
@@ -54,7 +52,7 @@ function formatObject(oldest, latest){
         latest.name = latest.name.bold() +','+oldest.name.strike()
     }
     if(latest.number_of_employees != oldest.number_of_employees){
-        latest.number_of_employees = (latest.number_of_employees.toString()).bold() +','+ (oldest.number_of_employees.toString()).strike()
+        latest.number_of_employees = (latest.number_of_employees.toString()) +','+ (oldest.number_of_employees.toString()).strike()
     }
     if(latest.is_serious != oldest.is_serious){
         latest.is_serious.bold() +','+oldest.is_serious.strike()
@@ -64,61 +62,68 @@ function formatObject(oldest, latest){
     return JSON.stringify(latest);
 }
 
-async function getData(){
-    fetch(url, options)
-	.then(res => res.json())
-	.then(json => console.log('data fetched successfully!'))
-	.catch(err => console.error('error:' + err));
+const funcRes = formatObject(old, New);
 
+async function getData(){
     try {
-        const res = await fetch(url, options);
-        const json = await res.json();
+        const response = await fetch(url);
+        const json = await response.json();
         return json.data
-    } catch (err) {
-        return err;
-    }
+      } catch (error) {
+        console.log(error);
+        return error
+      }
 }
 
 const data = await getData()
 
 
 // Endpoint 1 getting document by ID
-app.get('/documents/:id', (req,res)=>{
+app.get('/documents/:id', (req,res,next)=>{
     const id = parseInt(req.params.id, 10);
-    data.map((docs) => {
-        if (docs.id === id) {
-        return res.status(200).send({
-            success: 'true',
-            message: 'Found it !',
-            data :docs,
+    try {
+        data.map((docs) => {
+            if (docs.id === id) {
+            return res.status(200).send({
+                success: 'true',
+                message: 'Found it !',
+                data :docs,
+            });
+            } 
         });
-        } 
-    });
-    return res.status(404).send({
-    success: 'false',
-    message: 'You sure about that id of yours ?',
-    });
-    });
+    } catch (error) {
+        return res.status(404).json();
+    }
+});
 // Endpoint 2 getting document tags
-app.get('/tags/:id', (req,res)=>{
+app.get('/tags/:id', (req,res, next)=>{
     const id = parseInt(req.params.id, 10);
     data.map((docs) => {
         if (docs.id === id) {
         return res.status(200).send({
             success: 'true',
-            message: 'Found it !',
+            message: 'Found those tags !',
             data :docs.tags,
         });
         } 
     });
-    return res.status(404).send({
-    success: 'false',
-    message: 'You sure about that id of yours ?',
-    });
+    return res.status(404).json();
     });
  
 console.log(formatObject(old,New))
 // launching the runtime server
+
+app.get('/function', (req,res,next)=>{
+    try {
+        return res.status(200).send({
+            success: 'true',
+            message: 'voici le résultat !',
+            data : funcRes,
+        });
+    } catch (error) {
+        return error
+    }
+})
 
 const PORT = 5000;
 
